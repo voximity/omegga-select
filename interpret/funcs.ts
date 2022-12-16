@@ -6,6 +6,7 @@ import {
   convertNumberValueUnits,
   expectValueType,
   Filter,
+  getAxis,
   getContextBounds,
   testNumber,
   Transform,
@@ -119,38 +120,59 @@ addFilter({
   },
 });
 
-['x', 'y', 'z'].forEach((c, i) => {
-  // positions
-  addFilter({
-    aliases: [c, 'p' + c],
-    fn: (ctx, args) => {
-      if (args.length === 0) throw { message: 'expected_number' };
-      const test = testNumber(convertNumberValueUnits(args[0]));
-      return (brick) => test(brick.position[i]);
-    },
-  });
+// positions
+addFilter({
+  aliases: ['position', 'pos', 'p'],
+  fn: (ctx, args) => {
+    if (args.length < 2 || args[0].type !== 'string')
+      throw { message: 'expected_axis_and_number' };
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    if (args[1].type === 'number') args[1].value *= factor;
+    else if (args[1].type === 'range') {
+      if (args[1].min) args[1].min *= factor;
+      if (args[1].max) args[1].max *= factor;
+    }
+    const test = testNumber(convertNumberValueUnits(args[1]));
+    return (brick) => test(brick.position[axis]);
+  },
+});
 
-  // center positions
-  addFilter({
-    aliases: ['c' + c, 'center' + c],
-    fn: (ctx, args) => {
-      if (args.length === 0) throw { message: 'expected_number' };
-      const test = testNumber(convertNumberValueUnits(args[0]));
-      const ref = getContextBounds(ctx).center[i];
-      return (brick) => test(brick.position[i] - ref);
-    },
-  });
+// center positions
+addFilter({
+  aliases: ['centerposition', 'centerpos', 'cp'],
+  fn: (ctx, args) => {
+    if (args.length < 2 || args[0].type !== 'string')
+      throw { message: 'expected_axis_and_number' };
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    if (args[1].type === 'number') args[1].value *= factor;
+    else if (args[1].type === 'range') {
+      if (args[1].min) args[1].min *= factor;
+      if (args[1].max) args[1].max *= factor;
+    }
+    const test = testNumber(convertNumberValueUnits(args[1]));
+    const ref = getContextBounds(ctx).center[axis];
+    return (brick) => test(brick.position[axis] - ref);
+  },
+});
 
-  // sizes
-  addFilter({
-    aliases: ['s' + c, 'size' + c, 'scale' + c],
-    fn: (ctx, args) => {
-      if (args.length === 0) throw { message: 'expected_number' };
-      const test = testNumber(convertNumberValueUnits(args[0]));
-      return (brick) =>
-        test(OMEGGA_UTIL.brick.getBrickSize(brick, ctx.save.brick_assets)[i]);
-    },
-  });
+// sizes
+addFilter({
+  aliases: ['size', 'scale', 's'],
+  fn: (ctx, args) => {
+    if (args.length < 2 || args[0].type !== 'string')
+      throw { message: 'expected_axis_and_number' };
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    if (args[1].type === 'number') args[1].value *= factor;
+    else if (args[1].type === 'range') {
+      if (args[1].min) args[1].min *= factor;
+      if (args[1].max) args[1].max *= factor;
+    }
+    const test = testNumber(convertNumberValueUnits(args[1]));
+    return (brick) =>
+      test(
+        OMEGGA_UTIL.brick.getBrickSize(brick, ctx.save.brick_assets)[axis] * 2
+      );
+  },
 });
 
 addFilter({
@@ -277,19 +299,106 @@ addTransform({
   },
 });
 
-['x', 'y', 'z'].forEach((c, i) => {
-  // translate coordinates
-  addTransform({
-    aliases: ['t' + c, 'translate' + c],
-    fn: (ctx, args) => {
-      if (args.length === 0 || args[0].type !== 'number')
-        throw { message: 'expected_number' };
-      const { value } = convertNumberValueUnits(args[0]) as ValueNumber;
+// translate coordinates
+addTransform({
+  aliases: ['translate', 't'],
+  fn: (ctx, args) => {
+    if (
+      args.length < 2 ||
+      args[0].type !== 'string' ||
+      args[1].type !== 'number'
+    )
+      throw { message: 'expected_axis_and_number' };
+
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    const value =
+      (convertNumberValueUnits(args[1]) as ValueNumber).value * factor;
+    return (brick) => {
+      brick.position[axis] += value;
+    };
+  },
+});
+
+// resize
+addTransform({
+  aliases: ['resize', 'r'],
+  fn: (ctx, args) => {
+    if (
+      args.length < 2 ||
+      args[0].type !== 'string' ||
+      args[1].type !== 'number'
+    )
+      throw { message: 'expected_number' };
+
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    let value =
+      (convertNumberValueUnits(args[1]) as ValueNumber).value * factor;
+
+    let dir = 'min';
+    if (args[2] && args[2].type === 'string' && args[2].value === 'center') {
+      dir = undefined;
+    }
+
+    if (value < 0) {
+      value = -value;
+      if (dir) dir = dir === 'min' ? 'max' : 'min';
+    }
+
+    const half = Math.round(value / 2);
+    if (dir) {
       return (brick) => {
-        brick.position[i] += value;
+        const old = brick.size[axis];
+        brick.size[axis] = half;
+        brick.position[OMEGGA_UTIL.brick.getScaleAxis(brick, axis)] +=
+          dir === 'min' ? half - old : old - half;
       };
-    },
-  });
+    }
+
+    return (brick) => {
+      brick.size[axis] = half;
+    };
+  },
+});
+
+// absolute resize
+addTransform({
+  aliases: ['absoluteresize', 'ar', 'absr'],
+  fn: (ctx, args) => {
+    if (
+      args.length < 2 ||
+      args[0].type !== 'string' ||
+      args[1].type !== 'number'
+    )
+      throw { message: 'expected_number' };
+
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    let value =
+      (convertNumberValueUnits(args[1]) as ValueNumber).value * factor;
+
+    let dir = 'min';
+    if (args[2] && args[2].type === 'string' && args[2].value === 'center') {
+      dir = undefined;
+    }
+
+    if (value < 0) {
+      value = -value;
+      if (dir) dir = dir === 'min' ? 'max' : 'min';
+    }
+
+    const half = Math.round(value / 2);
+    if (dir) {
+      return (brick) => {
+        const sidx = OMEGGA_UTIL.brick.getScaleAxis(brick, axis);
+        const old = brick.size[sidx];
+        brick.size[sidx] = half;
+        brick.position[axis] += dir === 'min' ? half - old : old - half;
+      };
+    }
+
+    return (brick) => {
+      brick.size[axis] = half;
+    };
+  },
 });
 
 addTransform({

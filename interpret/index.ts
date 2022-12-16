@@ -13,6 +13,7 @@ export type Context = {
   saveBounds?: BrickBounds;
   player: OmeggaPlayer;
   playerColor: number[];
+  playerTransform: PlayerTransform;
   localFilters: ReturnType<Filter['fn']>[];
   localTransforms: ReturnType<Transform['fn']>[];
 };
@@ -30,6 +31,15 @@ export type Transform = {
 export type InterpretResult = {
   total: number;
   filtered: number;
+};
+
+export type PlayerTransform = {
+  x: number;
+  y: number;
+  z: number;
+  pitch: number;
+  yaw: number;
+  roll: number;
 };
 
 export function colorsEqual(a: number[], b: number[]) {
@@ -54,7 +64,7 @@ export function testNumber(against: Value): (value: number) => boolean {
     return (value) => {
       if (
         against.max != null &&
-        value > against.max &&
+        value >= against.max &&
         (against.maxEx ? true : value !== against.max)
       )
         return false;
@@ -62,7 +72,7 @@ export function testNumber(against: Value): (value: number) => boolean {
       // check min
       if (
         against.min != null &&
-        value < against.min &&
+        value <= against.min &&
         (against.minEx ? true : value !== against.min)
       )
         return false;
@@ -128,6 +138,70 @@ export function convertNumberValueUnits(value: Value): Value {
   }
 }
 
+async function getPlayerTransform(player: string): Promise<PlayerTransform> {
+  const match = await Omegga.watchLogChunk(
+    `Chat.Command /GetTransform ${player}`,
+    /Transform: X=(-?[0-9,.]+) Y=(-?[0-9,.]+) Z=(-?[0-9,.]+) Roll=(-?[0-9,.]+) Pitch=(-?[0-9,.]+) Yaw=(-?[0-9,.]+)/,
+    { first: (match) => match[0].startsWith('Transform:'), timeoutDelay: 1000 }
+  );
+
+  const result = {
+    x: match[0][1],
+    y: match[0][2],
+    z: match[0][3],
+    roll: match[0][4],
+    pitch: match[0][5],
+    yaw: match[0][6],
+  };
+
+  return Object.fromEntries(
+    Object.entries(result).map(([k, n]) => [k, parseFloat(n.replace(',', ''))])
+  ) as PlayerTransform;
+}
+
+const YAW_AXES = [
+  [0, -1],
+  [1, -1],
+  [0, 1],
+  [1, 1],
+];
+
+export function getYawAxis(yaw: number): [number, number] {
+  return YAW_AXES[Math.floor(((yaw + 225) % 360) / 90)] as [number, number];
+}
+
+/** Get an axis from its name. Returns [axis, factor]. */
+export function getAxis(ctx: Context, name: string): [number, number] {
+  switch (name.toLowerCase()) {
+    case 'x':
+      return [0, 1];
+    case 'y':
+      return [1, 1];
+    case 'z':
+      return [2, 1];
+    case 'up':
+    case 'u':
+      return [2, 1];
+    case 'down':
+    case 'd':
+      return [2, -1];
+    case 'forward':
+    case 'f':
+      return getYawAxis(ctx.playerTransform.yaw);
+    case 'backward':
+    case 'b':
+      return getYawAxis(ctx.playerTransform.yaw + 180);
+    case 'left':
+    case 'l':
+      return getYawAxis(ctx.playerTransform.yaw - 90);
+    case 'right':
+    case 'r':
+      return getYawAxis(ctx.playerTransform.yaw + 90);
+    default:
+      throw { message: 'unknown_axis' };
+  }
+}
+
 export default class Interpreter {
   parsed: ParseResult;
 
@@ -162,6 +236,7 @@ export default class Interpreter {
       saveBounds: bounds,
       player,
       playerColor: (await player.getPaint()).color,
+      playerTransform: await getPlayerTransform(player.name),
       localFilters: [],
       localTransforms: [],
     };

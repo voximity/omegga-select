@@ -68,13 +68,14 @@ always look like:
 
 ### Argument/value types
 
-| Name       | Syntax                                                                            | Description                                                           | Example                    |
-| ---------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------- |
-| `boolean`  | `on`/`yes`/`true` or `off`/`no`/`false`                                           | A boolean value. True or false.                                       | `true` or `false`          |
-| `number`   | A number (decimal optional) followed by optional units                            | A number. Optionally specify units for position/size-based functions. | `1` or `2.5` or `10 studs` |
-| `string`   | A word with no spaces, or any text surrounded by single (') or double (") quotes. | A string of text.                                                     | `hello` or `'hello world'` |
-| `function` | See above section.                                                                | A function, usually a filter.                                         | `color(picker)`            |
-| `range`    | `>` or `<`, plus optional `=`, plus `number`                                      | A range. Units are allowed on the number part.                        | `>=5pl`                    |
+| Name       | Syntax                                                                                      | Description                                                           | Example                    |
+| ---------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------- |
+| `boolean`  | `on`/`yes`/`true` or `off`/`no`/`false`                                                     | A boolean value. True or false.                                       | `true` or `false`          |
+| `number`   | A number (decimal optional) followed by optional units                                      | A number. Optionally specify units for position/size-based functions. | `1` or `2.5` or `10 studs` |
+| `string`   | A word with no spaces, or any text surrounded by single (') or double (") quotes.           | A string of text.                                                     | `hello` or `'hello world'` |
+| `function` | See above section.                                                                          | A function, usually a filter.                                         | `color(picker)`            |
+| `range`    | `>` or `<`, plus optional `=`, plus `number`                                                | A range. Units are allowed on the number part.                        | `>=5pl`                    |
+| `axis`     | `x`, `y`, `z`, `up`/`u`, `down`/`d`, `left`/`l`, `right`/`r`, `forward`/`f`, `backward`/`b` | An axis. Non-XYZ axes are based on where the player is looking.       | `right`                    |
 
 ### Units
 
@@ -98,29 +99,21 @@ always look like:
 
 ### List of filters
 
-| Name                | Aliases            | Arguments                         | Description                                                                                                                                                                         | Example                        |
-| ------------------- | ------------------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `not`               |                    | `filter: function`                | Inverts the result of the passed `filter`.                                                                                                                                          | `not(color(picker))`           |
-| `or`                |                    | any number of `function`s         | Evaluates the functions passed until one passes. Boolean OR on all passed functions.                                                                                                | `or(mat(glow), mat(metallic))` |
-| `x`                 | `px`               | `value: number` or `value: range` | Checks if the brick's X position is equal to the value or within the value's range.                                                                                                 | `x(0)`                         |
-| `y`                 | `py`               | `value: number` or `value: range` | Checks if the brick's Y position is equal to the value or within the value's range.                                                                                                 | `y(>0)`                        |
-| `z`                 | `pz`               | `value: number` or `value: range` | Checks if the brick's Z position is equal to the value or within the value's range.                                                                                                 | `z(<=5 studs)`                 |
-| `cx`                | `centerx`          | `value: number` or `value: range` | Checks if the brick's X position relative to the center of the selection is equal to the value or within the value's range.                                                         | `cx(0)`                        |
-| `cy`                | `centery`          | `value: number` or `value: range` | Checks if the brick's Y position relative to the center of the selection is equal to the value or within the value's range.                                                         | `cy(>0)`                       |
-| `cz`                | `centerz`          | `value: number` or `value: range` | Checks if the brick's Z position relative to the center of the selection is equal to the value or within the value's range.                                                         | `cz(<=5 studs)`                |
-| `sx`                | `sizex`, `scalex`  | `value: number` or `value: range` | Checks if the brick's X size is equal to the value or within the value's range.                                                                                                     | `sx(1)`                        |
-| `sy`                | `sizey`, `scaley`  | `value: number` or `value: range` | Checks if the brick's Y size is equal to the value or within the value's range.                                                                                                     | `sy(2)`                        |
-| `sz`                | `sizez`, `scalez`  | `value: number` or `value: range` | Checks if the brick's Z size is equal to the value or within the value's range.                                                                                                     | `sz(5)`                        |
-| `owner`             |                    | `name: string`, `exact?: 'exact'` | Checks if the brick's owner matches the passed `name`. If `exact` is specified, then the owner is expected to literally equal `name`. Otherwise, it does a case-insensitive search. | `owner(x, exact)`              |
-| `type`              | `brick`, `asset`   | `name: string`                    | Checks if the brick's asset name contains case-insensitive `name`.                                                                                                                  | `type(micro)`                  |
-| `materialintensity` | `intensity`, `int` | `value: number` or `value: range` | Checks if the brick's material intensity is equal to the value or within the value's range.                                                                                         | `intensity(>=5)`               |
+| Name                | Aliases            | Arguments                                       | Description                                                                                                                                                                         | Example                        |
+| ------------------- | ------------------ | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `not`               |                    | `filter: function`                              | Inverts the result of the passed `filter`.                                                                                                                                          | `not(color(picker))`           |
+| `or`                |                    | any number of `function`s                       | Evaluates the functions passed until one passes. Boolean OR on all passed functions.                                                                                                | `or(mat(glow), mat(metallic))` |
+| `position`          | `pos`, `p`         | `axis: axis`, `value: number` or `value: range` | Checks if the brick's axis position is equal to the value or within the value's range.                                                                                              | `position(x, 0)`               |
+| `centerposition`    | `centerpos`, `cp`  | `axis: axis`, `value: number` or `value: range` | Checks if the brick's axis position relative to the center of the selection is equal to the value or within the value's range.                                                      | `cp(right, >0)`                |
+| `size`              | `scale`, `s`       | `value:axis`, `value: number` or `value: range` | Checks if the brick's axis size is equal to the value or within the value's range.                                                                                                  | `size(forward, 1br)`           |
+| `owner`             |                    | `name: string`, `exact?: 'exact'`               | Checks if the brick's owner matches the passed `name`. If `exact` is specified, then the owner is expected to literally equal `name`. Otherwise, it does a case-insensitive search. | `owner(x, exact)`              |
+| `type`              | `brick`, `asset`   | `name: string`                                  | Checks if the brick's asset name contains case-insensitive `name`.                                                                                                                  | `type(micro)`                  |
+| `materialintensity` | `intensity`, `int` | `value: number` or `value: range`               | Checks if the brick's material intensity is equal to the value or within the value's range.                                                                                         | `intensity(>=5)`               |
 
 ### List of transforms
 
-| Name                | Aliases            | Arguments       | Description                                          |
-| ------------------- | ------------------ | --------------- | ---------------------------------------------------- |
-| `delete`            | `remove`, `omit`   |                 | Removes the brick from the selection.                |
-| `materialintensity` | `intensity`, `int` | `value: number` | Sets the brick's intensity from 0-10.                |
-| `tx`                | `translatex`       | `value: number` | Translates the brick by `value` units on the X axis. |
-| `ty`                | `translatey`       | `value: number` | Translates the brick by `value` units on the Y axis. |
-| `tz`                | `translatez`       | `value: number` | Translates the brick by `value` units on the Z axis. |
+| Name                | Aliases            | Arguments                     | Description                                                    |
+| ------------------- | ------------------ | ----------------------------- | -------------------------------------------------------------- |
+| `delete`            | `remove`, `omit`   |                               | Removes the brick from the selection.                          |
+| `materialintensity` | `intensity`, `int` | `value: number`               | Sets the brick's intensity from 0-10.                          |
+| `translate`         | `t`                | `axis: axis`, `value: number` | Translates the brick by `value` units on the specified `axis`. |

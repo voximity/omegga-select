@@ -63,16 +63,12 @@ const getOp = (name: string): Op | undefined => {
   switch (name.toLowerCase()) {
     case 'replace':
     case 'set':
-    case 'r':
-    case 's':
       return Op.Replace;
     case 'copy':
     case 'cp':
-    case 'c':
       return Op.Copy;
     case 'delete':
     case 'remove':
-    case 'd':
       return Op.Delete;
     case 'count':
       return Op.Count;
