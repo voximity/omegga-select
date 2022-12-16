@@ -10,6 +10,7 @@ import { filterMap, transformMap } from './funcs';
 
 export type Context = {
   save: BrsV10;
+  saveBounds?: BrickBounds;
   player: OmeggaPlayer;
   playerColor: number[];
   localFilters: ReturnType<Filter['fn']>[];
@@ -71,6 +72,62 @@ export function testNumber(against: Value): (value: number) => boolean {
   } else throw { message: 'bad_number_or_range' };
 }
 
+export function getContextBounds(ctx: Context) {
+  if (ctx.saveBounds) return ctx.saveBounds;
+  ctx.saveBounds = OMEGGA_UTIL.brick.getBounds(ctx.save);
+  return ctx.saveBounds;
+}
+
+export function numberUnits(n: number, units: string) {
+  switch (units) {
+    case 'bricks':
+    case 'brick':
+    case 'br':
+    case 'b':
+      return n * 12;
+    case 'studs':
+    case 'stud':
+    case 'st':
+    case 's':
+      return n * 10;
+    case 'plates':
+    case 'plate':
+    case 'pl':
+      return n * 4;
+    case 'micros':
+    case 'micro':
+    case 'm':
+      return n * 2;
+    case undefined:
+    case null:
+    case '':
+      return n;
+    default:
+      throw { message: 'unknown_units' };
+  }
+}
+
+export function convertNumberValueUnits(value: Value): Value {
+  if (value.type !== 'number' && value.type !== 'range') return value;
+  if (value.type === 'number') {
+    return { type: 'number', value: numberUnits(value.value, value.units) };
+  } else if (value.type === 'range') {
+    return {
+      type: 'range',
+      max:
+        value.max && value.maxUnits
+          ? numberUnits(value.max, value.maxUnits)
+          : value.max,
+      maxEx: value.maxEx,
+      min:
+        value.min && value.minUnits
+          ? numberUnits(value.min, value.minUnits)
+          : value.min,
+      minEx: value.minEx,
+    };
+  }
+}
+
 export default class Interpreter {
   parsed: ParseResult;
 
@@ -82,8 +139,9 @@ export default class Interpreter {
     let save: ReadSaveObject;
     let bounds: BrickBounds;
     try {
-      if (this.parsed.all) save = await Omegga.getSaveData();
-      else {
+      if (this.parsed.all) {
+        save = await Omegga.getSaveData();
+      } else {
         bounds = await player.getTemplateBounds();
         save = await player.getTemplateBoundsData();
       }
@@ -101,6 +159,7 @@ export default class Interpreter {
 
     const ctx: Context = {
       save,
+      saveBounds: bounds,
       player,
       playerColor: (await player.getPaint()).color,
       localFilters: [],

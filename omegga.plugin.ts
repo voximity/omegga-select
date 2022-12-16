@@ -43,15 +43,27 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
   };
 
   async init() {
-    this.omegga.on('cmd:select', async (speaker: string, ...args: string[]) => {
+    const confirms: Record<string, () => void> = {};
+
+    const command = async (speaker: string, ...args: string[]) => {
       const player = this.omegga.getPlayer(speaker);
+      if (confirms[player.id]) {
+        if (args.join(' ') === 'ok') {
+          this.omegga.whisper(player, 'OK, proceeding...');
+          confirms[player.id]();
+        } else this.omegga.whisper(player, 'Action cancelled.');
+        return;
+      }
 
       // assert that the user has permission to use the command
       if (
         !player.isHost() &&
         !this.isAuthed('command-authed-roles', player.getRoles())
       )
-        return;
+        return this.omegga.whisper(
+          player,
+          '<color="f00">Permission denied.</> You are not authorized to use the select command.'
+        );
 
       const result = this.parseLine(speaker, args.join(' '));
       if (result) {
@@ -61,7 +73,38 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           !player.isHost() &&
           !this.isAuthed('all-flag-authed-roles', player.getRoles())
         )
-          return;
+          return this.omegga.whisper(
+            player,
+            '<color="f00">Permission denied.</> You are not authorized to use the <code>all</> flag.'
+          );
+
+        if (result.all) {
+          this.omegga.whisper(
+            player,
+            '<color="f80"><b>Warning:</></> Using <code>all</> is a potentially destructive action.'
+          );
+          this.omegga.whisper(
+            player,
+            'If you wish to <color="0f0">confirm</>, use <code>/select ok</>. Otherwise, run <code>/select [anything]</> or wait.'
+          );
+
+          try {
+            await new Promise<void>((resolve, reject) => {
+              const cleanup = () => {
+                delete confirms[player.id];
+              };
+              const timeout = setTimeout(() => {
+                cleanup();
+                reject('timed_out');
+              }, 30_000);
+              confirms[player.id] = () => {
+                clearTimeout(timeout);
+                cleanup();
+                resolve();
+              };
+            });
+          } catch {}
+        }
 
         const interpreter = new Interpreter(result);
         try {
@@ -74,7 +117,10 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           console.error(e);
         }
       }
-    });
+    };
+
+    this.omegga.on('cmd:select', command);
+    this.omegga.on('chatcmd:select', command);
 
     return { registeredCommands: ['select'] };
   }

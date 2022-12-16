@@ -1,10 +1,12 @@
-import { Value } from '../lex';
+import { Value, ValueNumber } from '../lex';
 import { BrickV10, ColorRgb, Collision } from 'omegga';
 import {
   colorsEqual,
   Context,
+  convertNumberValueUnits,
   expectValueType,
   Filter,
+  getContextBounds,
   testNumber,
   Transform,
 } from '.';
@@ -92,22 +94,6 @@ addFilter({
   },
 });
 
-// addFilter({
-//   aliases: ['not'],
-//   fn: (ctx, brick, args) => {
-//     if (args.length === 0) throw { message: 'expected_fn' };
-//     let fnname: string, fnargs: Value[];
-//     if (args[0].type === 'function') {
-//       fnname = args[0].value.name;
-//       fnargs = args[0].value.args;
-//     } else if (args[0].type === 'string') {
-//       fnname = args[0].value;
-//       fnargs = [];
-//     } else throw { message: 'expected_fn' };
-//     return !ctx.evalFilter(brick, fnname, fnargs);
-//   },
-// });
-
 addFilter({
   aliases: ['or'],
   fn: (ctx, args) => {
@@ -133,30 +119,39 @@ addFilter({
   },
 });
 
-// addFilter({
-//   aliases: ['or'],
-//   fn: (ctx, brick, args) => {
-//     if (args.length === 0) throw { message: 'expected_fn' };
-//     const fns: { name: string; args: Value[] }[] = [];
-//     for (const arg of args) {
-//       if (arg.type === 'function') fns.push(arg.value);
-//       else if (arg.type === 'string') fns.push({ name: arg.value, args: [] });
-//       else throw { message: 'expected_fn' };
-//     }
-//     return fns.some((fn) => ctx.evalFilter(brick, fn.name, fn.args));
-//   },
-// });
-
-['x', 'y', 'z'].forEach((c, i) =>
+['x', 'y', 'z'].forEach((c, i) => {
+  // positions
   addFilter({
     aliases: [c, 'p' + c],
     fn: (ctx, args) => {
       if (args.length === 0) throw { message: 'expected_number' };
-      const test = testNumber(args[0]);
+      const test = testNumber(convertNumberValueUnits(args[0]));
       return (brick) => test(brick.position[i]);
     },
-  })
-);
+  });
+
+  // center positions
+  addFilter({
+    aliases: ['c' + c, 'center' + c],
+    fn: (ctx, args) => {
+      if (args.length === 0) throw { message: 'expected_number' };
+      const test = testNumber(convertNumberValueUnits(args[0]));
+      const ref = getContextBounds(ctx).center[i];
+      return (brick) => test(brick.position[i] - ref);
+    },
+  });
+
+  // sizes
+  addFilter({
+    aliases: ['s' + c, 'size' + c],
+    fn: (ctx, args) => {
+      if (args.length === 0) throw { message: 'expected_number' };
+      const test = testNumber(convertNumberValueUnits(args[0]));
+      return (brick) =>
+        test(OMEGGA_UTIL.brick.getBrickSize(brick, ctx.save.brick_assets)[i]);
+    },
+  });
+});
 
 addFilter({
   aliases: ['owner'],
@@ -229,7 +224,7 @@ addFilter({
 //
 
 addTransform({
-  aliases: ['delete', 'remove'],
+  aliases: ['delete', 'remove', 'omit'],
   fn: () => () => false,
 });
 
@@ -248,6 +243,21 @@ addTransform({
       brick.material_intensity = val;
     };
   },
+});
+
+['x', 'y', 'z'].forEach((c, i) => {
+  // translate coordinates
+  addTransform({
+    aliases: ['t' + c, 'translate' + c],
+    fn: (ctx, args) => {
+      if (args.length === 0 || args[0].type !== 'number')
+        throw { message: 'expected_number' };
+      const { value } = convertNumberValueUnits(args[0]) as ValueNumber;
+      return (brick) => {
+        brick.position[i] += value;
+      };
+    },
+  });
 });
 
 //

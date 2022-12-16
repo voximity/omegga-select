@@ -1,19 +1,28 @@
+export type ValueBoolean = { type: 'boolean'; value: boolean };
+export type ValueNumber = { type: 'number'; value: number; units?: string };
+export type ValueString = { type: 'string'; value: string };
+export type ValueFunc = { type: 'function'; value: Func };
+export type ValueRange = {
+  type: 'range';
+  /** The lower bound. */
+  min?: number;
+  /** The upper bound. */
+  max?: number;
+  /** The lower bound units. */
+  minUnits?: string;
+  /** The upper bound units. */
+  maxUnits?: string;
+  /** Whether or not the minimum is exclusive. */
+  minEx?: boolean;
+  /** Whether or not the maximum is exclusive. */
+  maxEx?: boolean;
+};
 export type Value =
-  | { type: 'boolean'; value: boolean }
-  | { type: 'number'; value: number }
-  | { type: 'string'; value: string }
-  | {
-      type: 'range';
-      /** The lower bound. */
-      min?: number;
-      /** The upper bound. */
-      max?: number;
-      /** Whether or not the minimum is exclusive. */
-      minEx?: boolean;
-      /** Whether or not the maximum is exclusive. */
-      maxEx?: boolean;
-    }
-  | { type: 'function'; value: Func };
+  | ValueBoolean
+  | ValueNumber
+  | ValueString
+  | ValueRange
+  | ValueFunc;
 
 const BOOLEAN_KEYWORDS: Record<string, boolean> = {
   on: true,
@@ -167,7 +176,12 @@ export default class Lexer {
       const value = Number(buf);
       if (isNaN(value)) return this.error('invalid number', col);
 
-      return { type: 'number', value };
+      const units = this.optional(() => {
+        this.readWhitespace();
+        return this.readIdentifier();
+      });
+
+      return { type: 'number', value, units: units.value };
     } else if (/["']/.test(this.data[this.col])) {
       // a string, contained within quotes
       const quote = this.data[this.col++];
@@ -213,9 +227,19 @@ export default class Lexer {
         return this.error('expected a number in the range');
 
       if (dir === '>')
-        return { type: 'range', min: num.value, minEx: !inclusive };
+        return {
+          type: 'range',
+          min: num.value,
+          minEx: !inclusive,
+          minUnits: num.units,
+        };
       else if (dir === '<')
-        return { type: 'range', max: num.value, maxEx: !inclusive };
+        return {
+          type: 'range',
+          max: num.value,
+          maxEx: !inclusive,
+          maxUnits: num.units,
+        };
     }
     return this.error('unknown value', col);
   };
