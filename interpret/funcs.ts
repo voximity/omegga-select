@@ -143,7 +143,7 @@ addFilter({
 
   // sizes
   addFilter({
-    aliases: ['s' + c, 'size' + c],
+    aliases: ['s' + c, 'size' + c, 'scale' + c],
     fn: (ctx, args) => {
       if (args.length === 0) throw { message: 'expected_number' };
       const test = testNumber(convertNumberValueUnits(args[0]));
@@ -266,7 +266,7 @@ addTransform({
 
 // visible
 addFilterAndTransform(
-  ['visible', 'vis', 'show'],
+  ['visibility', 'visible', 'vis', 'show'],
   'visibility',
   (ctx: Context, args: Value[]) => {
     const value = args[0] && args[0].type === 'boolean' ? args[0].value : true;
