@@ -219,6 +219,38 @@ addFilter({
   },
 });
 
+addFilter({
+  aliases: ['material', 'mat'],
+  fn: (ctx, args) => {
+    if (args.length === 0) throw { message: 'expected_material' };
+    if (args[0].type !== 'string') throw { message: 'expected_material' };
+    if (
+      args[1] &&
+      (args[1].type !== 'number' || args[1].value < 0 || args[1].value > 10)
+    )
+      throw { message: 'bad_intensity' };
+
+    const matName =
+      'BMC_' +
+      args[0].value
+        .split(' ')
+        .map((v) => v[0].toUpperCase() + v.slice(1).toLowerCase());
+
+    if (!OMEGGA_UTIL.brick.BRICK_CONSTANTS.DEFAULT_MATERIALS.includes(matName))
+      throw { message: 'unknown_material' };
+
+    let index = ctx.save.materials.indexOf(matName);
+    if (index === -1) return () => false;
+
+    const intensity = (args[1] as ValueNumber)?.value;
+    if (intensity)
+      return (brick) =>
+        brick.material_index === index &&
+        brick.material_intensity === intensity;
+    else return (brick) => brick.material_index === index;
+  },
+});
+
 //
 // Transforms
 //
@@ -258,6 +290,38 @@ addTransform({
       };
     },
   });
+});
+
+addTransform({
+  aliases: ['material', 'mat'],
+  fn: (ctx, args) => {
+    if (args.length === 0) throw { message: 'expected_material' };
+    if (args[0].type !== 'string') throw { message: 'expected_material' };
+    if (
+      args[1] &&
+      (args[1].type !== 'number' || args[1].value < 0 || args[1].value > 10)
+    )
+      throw { message: 'bad_intensity' };
+
+    const matName =
+      'BMC_' +
+      args[0].value
+        .split(' ')
+        .map((v) => v[0].toUpperCase() + v.slice(1).toLowerCase());
+
+    if (!OMEGGA_UTIL.brick.BRICK_CONSTANTS.DEFAULT_MATERIALS.includes(matName))
+      throw { message: 'unknown_material' };
+
+    let index = ctx.save.materials.indexOf(matName);
+    if (index === -1) index = ctx.save.materials.push(matName) - 1;
+
+    const intensity = (args[1] as ValueNumber | undefined).value;
+
+    return (brick) => {
+      brick.material_index = index;
+      if (intensity) brick.material_intensity = intensity;
+    };
+  },
 });
 
 //
@@ -308,26 +372,6 @@ addFilterAndTransform(
     return colorsEqual(toCol(a), toCol(b));
   }
 );
-
-addFilterAndTransform(['material', 'mat'], 'material_index', (ctx, args) => {
-  if (args.length === 0) throw { message: 'expected_material' };
-  if (args[0].type !== 'string') throw { message: 'expected_material' };
-
-  const matName =
-    'BMC_' +
-    args[0].value
-      .split(' ')
-      .map((v) => v[0].toUpperCase() + v.slice(1).toLowerCase())
-      .join('_');
-
-  if (!OMEGGA_UTIL.brick.BRICK_CONSTANTS.DEFAULT_MATERIALS.includes(matName))
-    throw { message: 'unknown_material' };
-
-  let index = ctx.save.materials.indexOf(matName);
-  if (index === -1) index = ctx.save.materials.push(matName) - 1;
-
-  return memo(index);
-});
 
 addFilterAndTransform(
   ['collision', 'collide'],
