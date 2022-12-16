@@ -1,0 +1,20 @@
+{
+  "name": "select",
+  "description": "Mass brick manipulation",
+  "author": "voximity",
+  "config": {
+    "command-authed-roles": {
+      "description": "A list of roles that are authorized to use the command.",
+      "type": "list",
+      "itemType": "role",
+      "default": []
+    },
+    "all-flag-authed-roles": {
+      "description": "A list of roles that are authorized to use the all flag on the command, affecting all bricks, even those out of your selection.",
+      "type": "list",
+      "itemType": "role",
+      "default": []
+    }
+  },
+  "commands": []
+}
