@@ -65,7 +65,6 @@ const getOp = (name: string): Op | undefined => {
     case 'set':
       return Op.Replace;
     case 'copy':
-    case 'cp':
       return Op.Copy;
     case 'delete':
     case 'remove':
