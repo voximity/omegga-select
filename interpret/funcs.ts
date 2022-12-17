@@ -424,7 +424,7 @@ addTransform({
     let index = ctx.save.materials.indexOf(matName);
     if (index === -1) index = ctx.save.materials.push(matName) - 1;
 
-    const intensity = (args[1] as ValueNumber | undefined).value;
+    const intensity = (args[1] as ValueNumber | undefined)?.value;
 
     return (brick) => {
       brick.material_index = index;
