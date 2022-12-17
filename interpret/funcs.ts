@@ -466,6 +466,7 @@ addFilterAndTransform(
     )
       return memo(ctx.playerColor as ColorRgb);
 
+    // grayscale
     if (args.length === 1 && args[0].type === 'number')
       return memo([args[0].value, args[0].value, args[0].value] as ColorRgb);
 

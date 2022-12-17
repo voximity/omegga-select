@@ -1,12 +1,15 @@
 import Lexer, { ParseError, ParseResult } from './lex';
 import OmeggaPlugin, { OL, PS, PC } from 'omegga';
-import Interpreter from './interpret';
+import Interpreter, { SaveBackup } from './interpret';
 
 type Config = {
+  ['create-backups']: boolean;
   ['command-authed-roles']: string[];
   ['all-flag-authed-roles']: string[];
 };
 type Storage = {};
+
+export const backups: Record<string, SaveBackup> = {};
 
 export default class Plugin implements OmeggaPlugin<Config, Storage> {
   omegga: OL;
@@ -46,6 +49,8 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
     const confirms: Record<string, () => void> = {};
 
     const command = async (speaker: string, ...args: string[]) => {
+      console.log(speaker, 'is running /select', ...args);
+
       const player = this.omegga.getPlayer(speaker);
       if (confirms[player.id]) {
         if (args.join(' ') === 'ok') {
@@ -108,7 +113,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
         const interpreter = new Interpreter(result);
         try {
-          await interpreter.interpret(this.omegga.getPlayer(speaker));
+          await interpreter.interpret(this, this.omegga.getPlayer(speaker));
         } catch (e) {
           this.omegga.whisper(
             speaker,
@@ -122,7 +127,51 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
     this.omegga.on('cmd:select', command);
     this.omegga.on('chatcmd:select', command);
 
-    return { registeredCommands: ['select'] };
+    this.omegga.on('cmd:selectundo', async (speaker: string) => {
+      const player = this.omegga.getPlayer(speaker);
+
+      // assert that the user has permission to use the command
+      if (
+        !player.isHost() &&
+        !this.isAuthed('command-authed-roles', player.getRoles())
+      )
+        return this.omegga.whisper(
+          player,
+          '<color="f00">Permission denied.</> You are not authorized to use the select command.'
+        );
+
+      if (!this.config['create-backups'])
+        return this.omegga.whisper(
+          player,
+          '<color="f00">Backups are not enabled.</> Please enable them in the configuration first.'
+        );
+
+      if (!(player.id in backups))
+        return this.omegga.whisper(player, `<color="f00">No backup found.</>`);
+
+      const backup = backups[player.id];
+      delete backups[player.id];
+
+      console.log(player.name, 'restoring backup');
+      this.omegga.whisper(player, 'Restoring...');
+      if (backup.bounds)
+        this.omegga.clearRegion({
+          center: backup.bounds.center,
+          extent: backup.bounds.maxBound.map(
+            (c, i) => c - backup.bounds.center[i]
+          ) as [number, number, number],
+        });
+      else this.omegga.clearAllBricks(true);
+
+      await this.omegga.loadSaveData(backup.data, { quiet: true });
+      this.omegga.whisper(player, 'Backup restored.');
+    });
+
+    this.omegga.on('leave', (player) => {
+      if (player.id in backups) delete backups[player.id];
+    });
+
+    return { registeredCommands: ['select', 'selectundo'] };
   }
 
   async stop() {}

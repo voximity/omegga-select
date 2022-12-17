@@ -3,6 +3,11 @@
   "description": "Mass brick manipulation",
   "author": "voximity",
   "config": {
+    "create-backups": {
+      "description": "Whether or not backups will be created when commands are used. Restore with /selectundo.",
+      "type": "boolean",
+      "default": true
+    },
     "command-authed-roles": {
       "description": "A list of roles that are authorized to use the command.",
       "type": "list",

@@ -5,6 +5,7 @@ import {
   OmeggaPlayer,
   ReadSaveObject,
 } from 'omegga';
+import Plugin, { backups } from '../omegga.plugin';
 import { Op, ParseResult, Value } from '../lex';
 import { filterMap, transformMap } from './funcs';
 
@@ -40,6 +41,11 @@ export type PlayerTransform = {
   pitch: number;
   yaw: number;
   roll: number;
+};
+
+export type SaveBackup = {
+  data: BrsV10;
+  bounds?: BrickBounds;
 };
 
 export function colorsEqual(a: number[], b: number[]) {
@@ -209,7 +215,10 @@ export default class Interpreter {
     this.parsed = parsed;
   }
 
-  interpret = async (player: OmeggaPlayer): Promise<InterpretResult> => {
+  interpret = async (
+    plugin: Plugin,
+    player: OmeggaPlayer
+  ): Promise<InterpretResult> => {
     let save: ReadSaveObject;
     let bounds: BrickBounds;
     try {
@@ -229,6 +238,19 @@ export default class Interpreter {
     if (this.parsed.op === Op.Delete) {
       this.parsed.op = Op.Replace;
       this.parsed.transforms = [{ name: 'delete', args: [] }];
+    }
+
+    if (
+      plugin.config['create-backups'] &&
+      (this.parsed.op === Op.Replace || this.parsed.op === Op.Extract)
+    ) {
+      const backup: SaveBackup = {
+        data: JSON.parse(
+          JSON.stringify(save)
+        ) /* yes this is horrible and scary but V8 aggressively optimizes it */,
+        bounds,
+      };
+      backups[player.id] = backup;
     }
 
     const ctx: Context = {
