@@ -56,7 +56,10 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
         if (args.join(' ') === 'ok') {
           this.omegga.whisper(player, 'OK, proceeding...');
           confirms[player.id]();
-        } else this.omegga.whisper(player, 'Action cancelled.');
+        } else {
+          this.omegga.whisper(player, 'Action cancelled.');
+          delete confirms[player.id];
+        }
         return;
       }
 
@@ -167,11 +170,39 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       this.omegga.whisper(player, 'Backup restored.');
     });
 
+    const ln2srgb = (c: number) =>
+      c > 0.0031308 ? 1.055 * Math.pow(c, 1.0 / 2.4) - 0.055 : 12.92 * c;
+
+    this.omegga.on('cmd:getcolor', async (speaker: string) => {
+      const player = this.omegga.getPlayer(speaker);
+      const paint = await player.getPaint();
+      const displayColor = paint.color.map((n) =>
+        Math.round(ln2srgb(n / 255) * 255)
+      );
+      this.omegga.whisper(
+        player,
+        `<color="${displayColor
+          .map((c) => c.toString(16).padStart(2, '0'))
+          .join('')}">Selected color:</> (${paint.color
+          .map(
+            (c, i) =>
+              `<color="${
+                i === 0 ? displayColor[i].toString(16).padStart(2, '0') : '00'
+              }${
+                i === 1 ? displayColor[i].toString(16).padStart(2, '0') : '00'
+              }${
+                i === 2 ? displayColor[i].toString(16).padStart(2, '0') : '00'
+              }">#</>${c}`
+          )
+          .join(', ')})`
+      );
+    });
+
     this.omegga.on('leave', (player) => {
       if (player.id in backups) delete backups[player.id];
     });
 
-    return { registeredCommands: ['select', 'selectundo'] };
+    return { registeredCommands: ['select', 'selectundo', 'getcolor'] };
   }
 
   async stop() {}

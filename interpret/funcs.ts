@@ -120,6 +120,31 @@ addFilter({
   },
 });
 
+addFilter({
+  aliases: ['and'],
+  fn: (ctx, args) => {
+    if (args.length === 0) throw { message: 'expected_fn' };
+    const fns: ((brick: BrickV10) => boolean)[] = [];
+    for (const arg of args) {
+      let fnname: string, fnargs: Value[];
+      if (arg.type === 'function') {
+        fnname = arg.value.name;
+        fnargs = arg.value.args;
+      } else if (arg.type === 'string') {
+        fnname = arg.value;
+        fnargs = [];
+      } else throw { message: 'expected_fn' };
+
+      const obj = filterMap.get(fnname);
+      if (!obj) throw { message: 'unknown_filter', filter: fnname };
+
+      fns.push(obj.fn(ctx, fnargs));
+    }
+
+    return (brick) => fns.every((fn) => fn(brick));
+  },
+});
+
 // positions
 addFilter({
   aliases: ['position', 'pos', 'p'],
@@ -319,9 +344,9 @@ addTransform({
   },
 });
 
-// resize
+// local resize
 addTransform({
-  aliases: ['resize', 'r'],
+  aliases: ['localresize', 'lr'],
   fn: (ctx, args) => {
     if (
       args.length < 2 ||
@@ -360,9 +385,9 @@ addTransform({
   },
 });
 
-// absolute resize
+// absolute resize to
 addTransform({
-  aliases: ['absoluteresize', 'ar', 'absr'],
+  aliases: ['rt', 'r2', 'rto', 'arto', 'absrto', 'resizeto'],
   fn: (ctx, args) => {
     if (
       args.length < 2 ||
@@ -401,6 +426,47 @@ addTransform({
   },
 });
 
+// absolute resize (additive)
+addTransform({
+  aliases: ['r', 'ar', 'absr', 'resize'],
+  fn: (ctx, args) => {
+    if (
+      args.length < 2 ||
+      args[0].type !== 'string' ||
+      args[1].type !== 'number'
+    )
+      throw { message: 'expected_number' };
+
+    const [axis, factor] = getAxis(ctx, args[0].value);
+    let value = (convertNumberValueUnits(args[1]) as ValueNumber).value;
+
+    let dir = 'min';
+    if (args[2] && args[2].type === 'string' && args[2].value === 'center') {
+      dir = undefined;
+    }
+
+    if (factor < 0) {
+      // value = -value;
+      if (dir) dir = dir === 'min' ? 'max' : 'min';
+    }
+
+    const half = Math.round(value / 2);
+    if (dir) {
+      return (brick) => {
+        const sidx = OMEGGA_UTIL.brick.getScaleAxis(brick, axis);
+        brick.size[sidx] += half;
+        if (brick.size[sidx] <= 0) return false;
+        brick.position[axis] += dir === 'min' ? half : -half;
+      };
+    }
+
+    return (brick) => {
+      brick.size[axis] += half;
+      if (brick.size[axis] <= 0) return false;
+    };
+  },
+});
+
 addTransform({
   aliases: ['material', 'mat'],
   fn: (ctx, args) => {
@@ -428,7 +494,7 @@ addTransform({
 
     return (brick) => {
       brick.material_index = index;
-      if (intensity) brick.material_intensity = intensity;
+      if (intensity !== undefined) brick.material_intensity = intensity;
     };
   },
 });

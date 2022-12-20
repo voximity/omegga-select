@@ -185,21 +185,25 @@ export function getAxis(ctx: Context, name: string): [number, number] {
       return [1, 1];
     case 'z':
       return [2, 1];
+    case 'top':
     case 'up':
     case 'u':
       return [2, 1];
+    case 'bottom':
     case 'down':
     case 'd':
       return [2, -1];
     case 'forward':
+    case 'front':
     case 'f':
       return getYawAxis(ctx.playerTransform.yaw);
     case 'backward':
+    case 'back':
     case 'b':
       return getYawAxis(ctx.playerTransform.yaw + 180);
     case 'left':
     case 'l':
-      return getYawAxis(ctx.playerTransform.yaw - 90);
+      return getYawAxis(ctx.playerTransform.yaw + 270);
     case 'right':
     case 'r':
       return getYawAxis(ctx.playerTransform.yaw + 90);
@@ -247,7 +251,7 @@ export default class Interpreter {
       const backup: SaveBackup = {
         data: JSON.parse(
           JSON.stringify(save)
-        ) /* yes this is horrible and scary but V8 aggressively optimizes it */,
+        ) /* yes this is horrible and scary */,
         bounds,
       };
       backups[player.id] = backup;

@@ -117,3 +117,5 @@ always look like:
 | `delete`            | `remove`, `omit`   |                               | Removes the brick from the selection.                          |
 | `materialintensity` | `intensity`, `int` | `value: number`               | Sets the brick's intensity from 0-10.                          |
 | `translate`         | `t`                | `axis: axis`, `value: number` | Translates the brick by `value` units on the specified `axis`. |
+| `resize` | `absr`, `ar`, `r` | `axis: axis`, `amount: number`, `center?: center` | Absolutely resizes a brick along an axis, adding to its current size. |
+| `resizeto` | `absrto`, `arto`, `rto`, `rt`, `r2` | `axis: axis`, `amount: number`, `center?: 'center'` | Absolutely resizes a brick along an axis, setting its current size. |
