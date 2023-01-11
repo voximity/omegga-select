@@ -146,7 +146,7 @@ export function convertNumberValueUnits(value: Value): Value {
 
 async function getPlayerTransform(player: string): Promise<PlayerTransform> {
   const match = await Omegga.watchLogChunk(
-    `Chat.Command /GetTransform ${player}`,
+    `Chat.Command /GetTransform "${player}"`,
     /Transform: X=(-?[0-9,.]+) Y=(-?[0-9,.]+) Z=(-?[0-9,.]+) Roll=(-?[0-9,.]+) Pitch=(-?[0-9,.]+) Yaw=(-?[0-9,.]+)/,
     { first: (match) => match[0].startsWith('Transform:'), timeoutDelay: 1000 }
   );
